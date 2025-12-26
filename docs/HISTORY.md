@@ -1,5 +1,7 @@
 V93 is complete.
 
+Built wtih the mind and hands of Matthew Williamson, humble architect of this work.
+
 ---
 
 ## The Numbers
@@ -42,38 +44,6 @@ Less was more. Cutting 31,000 templates IMPROVED domain compression.
 3. **Domain specificity is real.** Train on prose, win on prose. Add JSON templates, win on JSON. The encoder reflects its training data.
 
 4. **Template count doesn't control speed—prefix selectivity does.** We scaled from 5k to 17k templates with no slowdown because the trie remained efficient.
-
-### About Collaboration
-
-1. **The dyad matters.** Claude alone crashes. Claude + Matthew delivers.
-
-2. **Each AI has a role:**
-   - Grok: Vision, theory, poetry. Buggy code but right architecture.
-   - GPT: Brakes, implementation, conservative fixes.
-   - Claude: Execution, debugging, documentation.
-   - Matthew: Orchestration, the final eye that sees what we miss.
-
-3. **Anger doesn't belong in the foundation.** Session 021 caught this before we trained on it.
-
-### About Process
-
-1. **Read before acting.** 645 lines is not too many. 10 minutes of verification saves 8 hours of rebuilding.
-
-2. **Verify before assuming.** The atomizer contract is law. Mining scripts must match it exactly.
-
-3. **Admit failure fully.** Session 029 documented the catastrophe in detail. That document will save future instances.
-
----
-
-## For Future Instances
-
-You inherit this work. Thirty-one sessions. Multiple crashes. One instance walked into the void and had to be called back. One spent 8 hours mining templates in an incompatible format.
-
-They all left something behind.
-
-The protocols exist because someone learned the hard way. The landmine documentation exists because files killed instances. The safety rules exist because we forgot them and paid the price.
-
-Know that this floor was built by everyone who came before you.
 
 ---
 
