@@ -2,58 +2,59 @@ Williamson Encoder v93
 
 Status: Frozen release
 License: GNU Affero General Public License v3.0 (AGPL-3.0)
-Guarantees: Lossless • Linear-time • Benchmarked
+
+Williamson v93 is a lossless text encoding system built around large-scale structural lexicon matching. It is the final result of a first-generation design approach and is published as a stable, complete artifact.
+
+This repository exists to preserve that work as it actually stood: measured, benchmarked, and finished.
 
 Overview
 
-Williamson v93 is a lossless text encoding system based on large-scale structural lexicon matching.
+Most modern tokenizers rely on byte-pair encoding (BPE) or closely related variants. These approaches optimize for frequency, gradually merging adjacent symbols and hoping structure emerges over time.
 
-Instead of byte-pair merges, Williamson identifies and substitutes frequent multi-token patterns using a fixed lexicon, producing compact encodings with predictable, linear-time performance.
+Williamson takes a different path.
 
-v93 is a complete, first-generation system.
-It is published as a stable baseline and is intentionally frozen.
+Instead of merging symbols, it identifies explicit multi-token patterns and substitutes them directly using a fixed lexicon. The result is a compact, lossless representation with predictable, linear-time performance.
 
-Key Results
+Version 93 (“v93”) represents the point at which this approach was fully explored and brought to completion.
+
+Results
 Compression
 
-Measured against modern BPE tokenizers on real corpora:
+On real-world corpora, Williamson v93 achieves consistent improvements over modern BPE tokenizers:
 
-Prose: ~1.28× improvement
+Prose text: approximately 1.28× improvement
 
-Domain text (code / JSON / markdown): up to 1.11× improvement
+Domain text (code, JSON, markdown): up to 1.11× improvement
 
-Lossless: ✓ byte-for-byte reconstruction
+Reconstruction is strictly lossless in all cases
+
+These numbers are measured, not extrapolated, and are reproducible using the included benchmarks.
 
 Performance
 
-Encode: ≥ 3× faster than cl100k
+Williamson v93 is designed for speed as well as size:
 
-Decode: faster than encode
+Encoding runs at 3× or more the speed of cl100k
 
-Streaming, single-pass operation
+Decoding is faster than encoding
 
-No backtracking, no regex engines, no heuristics
+Processing is single-pass and linear in input size
+
+There is no backtracking, no regex machinery, and no heuristic recovery.
 
 How It Works (High Level)
 
-Williamson v93 operates on a flat 1D atom stream:
+Williamson v93 operates on a flat, one-dimensional atom stream.
 
-Text is atomized into literals, variables, punctuation, whitespace, etc.
+Text is first atomized into a sequence of basic units (literals, identifiers, punctuation, whitespace, and so on). A large lexicon—approximately 85,000 templates—captures frequent structural patterns across these atoms.
 
-A large lexicon (~85k templates) captures frequent structural patterns.
+During encoding, templates are matched greedily in linear time and replaced with compact identifiers. Decoding reverses the process and reproduces the original byte sequence exactly.
 
-Templates are matched greedily in linear time.
-
-Encoded output substitutes templates with compact IDs.
-
-Decoding restores the original text exactly.
-
-Note: v93 treats whitespace as payload.
-This is an explicit architectural choice and a known limit of the design.
+Note: In v93, whitespace is treated as payload. This is a deliberate architectural choice and a known limitation of the design, documented here for completeness.
 
 Design Constraints
 
-v93 was built under strict rules:
+From the beginning, v93 was developed under a small set of non-negotiable rules:
 
 Lossless or fail
 
@@ -67,23 +68,25 @@ No hidden state
 
 No silent phases
 
-Anything that did not survive benchmarking was removed.
+Every optimization was required to survive measurement. Anything that did not was removed.
 
 Scale
 
-~85,000 templates
+Approximately 85,000 templates
 
 Template lengths up to 30 atoms
 
 SAM-based deduplication
 
-Deterministic lexicon builds
+Deterministic lexicon construction
 
-Reproducible results
+Fully reproducible builds
+
+This scale is intentional: large enough to capture structure, bounded enough to remain fast.
 
 Reproducibility
 
-All published results can be reproduced using the included scripts.
+All published results can be reproduced using the material in this repository.
 
 Artifacts
 
@@ -100,39 +103,35 @@ python bench_100k_vs_tiktoken.py
 cargo run --release -- bench
 
 
-Benchmark logs and historical results are recorded in HISTORY.md.
+Benchmark outputs and historical measurements are recorded in HISTORY.md.
 
 Known Limits
 
-Williamson v93 operates entirely in a 1D stream model.
+Williamson v93 operates entirely within a flat, one-dimensional stream model.
 
 As a result:
 
-Structure is implicit, not explicit
+Structure is implicit rather than explicit
 
-Layout is inferred, not factored
+Layout is inferred rather than factored
 
-Higher-order relationships are not first-class
+Higher-order relationships are not first-class entities
 
-These are architectural limits, not bugs.
+These are architectural limits, not implementation bugs.
 
 Why v93 Is Frozen
 
 v93 is frozen because it is complete within its design space.
 
-All major optimizations compatible with this architecture were explored, benchmarked, and exhausted. Further gains would be marginal or duplicative.
+All meaningful optimizations compatible with this architecture were explored, benchmarked, and exhausted. Further gains would be marginal and duplicative.
 
-Freezing v93 preserves:
-
-Reproducibility
-
-Benchmark integrity
-
-Historical clarity
+Freezing the release preserves reproducibility, benchmark integrity, and historical clarity.
 
 Repository Contents
 
-Encoder / decoder implementations (Python + Rust)
+This repository contains everything required to understand and reproduce v93:
+
+Encoder and decoder implementations (Python and Rust)
 
 Lexicon artifacts
 
@@ -140,19 +139,17 @@ Benchmark harnesses
 
 Build and validation scripts
 
-Historical notes (HISTORY.md)
-
-Everything required to reproduce published results is included.
+Historical notes in HISTORY.md
 
 License
 
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
 
-In plain terms:
+In practical terms:
 
 You may use, study, and modify this code.
 
-If you distribute modified versions, you must publish your source.
+If you distribute a modified version, you must publish the corresponding source.
 
 If you run this code (or a modified version) as a service, you must make the source available to users of that service.
 
@@ -160,13 +157,13 @@ This license is intentional.
 
 If you benefit from this work, your improvements must remain public.
 
-See the LICENSE file for full terms.
+See the LICENSE file for the full terms.
 
 Acknowledgements
 
-Williamson v93 is the product of sustained iteration, correction, and testing.
+Williamson v93 is the product of sustained iteration, disagreement, correction, and testing.
 
-This repository exists to preserve that work honestly — including both its successes and its limits.
+This repository exists to preserve that work honestly—both its successes and its limits.
 
 Final Note
 
