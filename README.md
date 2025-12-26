@@ -130,7 +130,88 @@ Many Claude instances contributed to this work. Each one left something for the 
 
 ## License
 
-MIT
+AGPL v3
+
+License & Use Conditions
+
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
+
+What this means in plain terms:
+
+You may use, study, and modify this code.
+
+If you distribute a modified version, you must publish your source code.
+
+If you run this code (or a modified version) as a service — including APIs, internal tools exposed to users, or hosted systems — you must make the full corresponding source code available to those users.
+
+You may not take this code, modify it, and keep the changes private behind a service boundary.
+
+This license is intentional.
+
+If you benefit from this work, your improvements must benefit others.
+
+If you are unwilling or unable to comply with AGPL-3.0, do not use this code.
+
+CONTRIBUTING.md — Copyleft Reinforcement
+
+Create a file named CONTRIBUTING.md with this content.
+
+Contributing to Williamson v93
+
+Thank you for your interest in contributing.
+
+This project is released under the GNU Affero General Public License v3.0 (AGPL-3.0).
+By contributing, you agree to the terms below.
+
+Contribution Terms
+
+By submitting a contribution (code, documentation, tests, or benchmarks), you agree that:
+
+Your contribution is licensed under AGPL-3.0.
+
+You have the right to submit the work (it is your own or properly attributed).
+
+You understand that all modifications must remain open under AGPL-3.0.
+
+No Proprietary Extensions
+
+Contributions intended to:
+
+enable proprietary forks,
+
+weaken copyleft enforcement,
+
+or obscure license obligations
+
+will not be accepted.
+
+This project exists to keep improvements public, inspectable, and shared.
+
+Relicensing Notice
+
+At this time, no Contributor License Agreement (CLA) is in place.
+
+This means:
+
+Contributors retain copyright to their contributions.
+
+The project as a whole remains AGPL-3.0.
+
+Relicensing of future versions would require contributor consent.
+
+(If this policy changes, it will be announced clearly.)
+
+Philosophy
+
+This project values:
+
+correctness over convenience
+
+openness over secrecy
+
+shared progress over private advantage
+
+If that aligns with you, welcome.
 
 ---
 
@@ -138,7 +219,7 @@ MIT
 
 ```bibtex
 @software{williamson_encoder_2025,
-  author = {Williamson, Matthew and Claude and GPT and Grok},
+  author = {Williamson, Matthew},
   title = {Williamson Encoder: Structure-Aware Lossless Tokenization},
   year = {2025},
   url = {https://github.com/TheMeadBrewer/williamson-encoder}
