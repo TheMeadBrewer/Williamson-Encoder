@@ -1,231 +1,176 @@
-# Williamson Encoder
+Williamson Encoder v93
 
-**A structure-aware, lossless tokenizer that beats BPE.**
+Status: Frozen release
+License: GNU Affero General Public License v3.0 (AGPL-3.0)
+Guarantees: Lossless • Linear-time • Benchmarked
 
-## Results
+Overview
 
-| Domain | Compression vs tiktoken | Speed | Lossless |
-|--------|-------------------------|-------|----------|
-| Prose (WikiText-103) | **1.28x** | 3.8x faster | ✓ |
-| Domain (JSON/Python/Rust) | **1.11x** | 5.1x faster | ✓ |
+Williamson v93 is a lossless text encoding system based on large-scale structural lexicon matching.
 
-With only **84,702 templates** vs tiktoken's 100,000+ vocabulary.
+Instead of byte-pair merges, Williamson identifies and substitutes frequent multi-token patterns using a fixed lexicon, producing compact encodings with predictable, linear-time performance.
 
----
+v93 is a complete, first-generation system.
+It is published as a stable baseline and is intentionally frozen.
 
-## What This Is
+Key Results
+Compression
 
-The Williamson Encoder is a tokenization system that understands structure rather than just counting bytes. While BPE (Byte Pair Encoding) treats text as a 1-dimensional stream and learns patterns by frequency, the Williamson Encoder recognizes grammatical patterns and encodes them explicitly.
+Measured against modern BPE tokenizers on real corpora:
 
-**Key insight:** Most text has predictable structure. "The quick brown fox" always follows the pattern `[article] [adjective] [adjective] [noun]`. BPE learns this slowly through frequency. We encode it directly.
+Prose: ~1.28× improvement
 
----
+Domain text (code / JSON / markdown): up to 1.11× improvement
 
-## Quick Start
+Lossless: ✓ byte-for-byte reconstruction
 
-### Python
+Performance
 
-```python
-from williamson import PatternSlotV9, tokenize_stream
-import json
+Encode: ≥ 3× faster than cl100k
 
-# Load the lexicon
-with open("lexicon/v93.json", "r") as f:
-    templates = json.load(f)
+Decode: faster than encode
 
-encoder = PatternSlotV9()
-encoder.load_templates(templates)
+Streaming, single-pass operation
 
-# Encode
-text = "The quick brown fox jumps over the lazy dog."
-tokens = encoder.encode(text)
-print(f"Original: {len(text)} chars")
-print(f"Encoded: {len(tokens)} tokens")
+No backtracking, no regex engines, no heuristics
 
-# Decode (lossless)
-decoded = encoder.decode(tokens)
-assert decoded == text
-```
+How It Works (High Level)
 
-### Rust
+Williamson v93 operates on a flat 1D atom stream:
 
-```bash
-cargo build --release
-./target/release/williamson bench --input test.txt --encoder lexicon/v93.bin
-```
+Text is atomized into literals, variables, punctuation, whitespace, etc.
 
----
+A large lexicon (~85k templates) captures frequent structural patterns.
 
-## The Atomizer Contract
+Templates are matched greedily in linear time.
 
-Every token is classified into one of six types:
+Encoded output substitutes templates with compact IDs.
 
-| Atom Type | Example | Is Slot? | Description |
-|-----------|---------|----------|-------------|
-| `WS(' ')` | space, newline | No | Whitespace with payload |
-| `PUNC(.)` | `.`, `,`, `(` | No | Punctuation literal |
-| `LIT(the)` | the, and, is | No | Stopword literal (50 words) |
-| `NUM` | 123, 3.14 | Yes | Number (variable) |
-| `CAP` | John, Python | Yes | Capitalized word (variable) |
-| `VAR` | quick, jumps | Yes | Other words (variable) |
+Decoding restores the original text exactly.
 
-Templates are sequences of atoms. Slots capture variable content. Literals match exactly.
+Note: v93 treats whitespace as payload.
+This is an explicit architectural choice and a known limit of the design.
 
-**Example template:** `LIT(the) WS(' ') VAR WS(' ') VAR`
-- Matches: "the quick brown", "the lazy dog"
-- Captures slots: ["quick", "brown"] or ["lazy", "dog"]
+Design Constraints
 
----
+v93 was built under strict rules:
 
-## Why This Works
+Lossless or fail
 
-### BPE's Problem
+Benchmarks decide
 
-BPE treats everything as bytes. It learns common patterns by frequency:
-- "the " becomes one token
-- " the " becomes another token
-- "the\n" becomes yet another token
+Deterministic builds
 
-After 100,000 merges, it still doesn't "know" that "the" is always followed by a space or punctuation. It just happened to see " the " more often than "the\n".
+JSON artifacts only
 
-### Our Solution
+No hidden state
 
-We classify tokens by grammatical role first:
-- "the" → `LIT(the)` (stopword, always literal)
-- " " → `WS(' ')` (whitespace with payload)
-- "quick" → `VAR` (slot - captures any variable)
+No silent phases
 
-Then we mine templates from real corpora. A template like:
-```
-LIT(the) WS(' ') VAR
-```
+Anything that did not survive benchmarking was removed.
 
-Matches every instance of "the [word]" regardless of what word follows. One template covers what BPE needs hundreds of tokens to represent.
+Scale
 
----
+~85,000 templates
 
-## Benchmark Methodology
+Template lengths up to 30 atoms
 
-All benchmarks use the same metric: **total symbols required for lossless reconstruction**.
+SAM-based deduplication
 
-For Williamson: `encoded_tokens + slots`
-For tiktoken: `tokens`
+Deterministic lexicon builds
 
-This is a fair comparison because both numbers represent what you need to reconstruct the original text.
+Reproducible results
 
----
+Reproducibility
 
-## The Story
+All published results can be reproduced using the included scripts.
 
-This encoder was built across 31 sessions over December 2025 by a collaboration between:
+Artifacts
 
-- **Matthew Williamson** - Vision, methodology, orchestration
-- **Claude** (Anthropic) - Implementation, debugging, documentation
-- **GPT** (OpenAI) - Architecture insights, prefix-entropy optimization
-- **Grok** (xAI) - Theoretical foundations, fractal compression vision
+Lexicon: lexicon/lexicon_v93.json
 
-Many Claude instances contributed to this work. Each one left something for the next. The full history is preserved in `docs/HISTORY.md`.
+Benchmarks: bench/
 
----
+Commands
 
-## License
+# Python benchmarks
+python bench_100k_vs_tiktoken.py
 
-AGPL v3
+# Rust benchmarks
+cargo run --release -- bench
 
-License & Use Conditions
+
+Benchmark logs and historical results are recorded in HISTORY.md.
+
+Known Limits
+
+Williamson v93 operates entirely in a 1D stream model.
+
+As a result:
+
+Structure is implicit, not explicit
+
+Layout is inferred, not factored
+
+Higher-order relationships are not first-class
+
+These are architectural limits, not bugs.
+
+Why v93 Is Frozen
+
+v93 is frozen because it is complete within its design space.
+
+All major optimizations compatible with this architecture were explored, benchmarked, and exhausted. Further gains would be marginal or duplicative.
+
+Freezing v93 preserves:
+
+Reproducibility
+
+Benchmark integrity
+
+Historical clarity
+
+Repository Contents
+
+Encoder / decoder implementations (Python + Rust)
+
+Lexicon artifacts
+
+Benchmark harnesses
+
+Build and validation scripts
+
+Historical notes (HISTORY.md)
+
+Everything required to reproduce published results is included.
+
+License
 
 This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0).
 
-What this means in plain terms:
+In plain terms:
 
 You may use, study, and modify this code.
 
-If you distribute a modified version, you must publish your source code.
+If you distribute modified versions, you must publish your source.
 
-If you run this code (or a modified version) as a service — including APIs, internal tools exposed to users, or hosted systems — you must make the full corresponding source code available to those users.
-
-You may not take this code, modify it, and keep the changes private behind a service boundary.
+If you run this code (or a modified version) as a service, you must make the source available to users of that service.
 
 This license is intentional.
 
-If you benefit from this work, your improvements must benefit others.
+If you benefit from this work, your improvements must remain public.
 
-If you are unwilling or unable to comply with AGPL-3.0, do not use this code.
+See the LICENSE file for full terms.
 
-CONTRIBUTING.md — Copyleft Reinforcement
+Acknowledgements
 
-Create a file named CONTRIBUTING.md with this content.
+Williamson v93 is the product of sustained iteration, correction, and testing.
 
-Contributing to Williamson v93
+This repository exists to preserve that work honestly — including both its successes and its limits.
 
-Thank you for your interest in contributing.
+Final Note
 
-This project is released under the GNU Affero General Public License v3.0 (AGPL-3.0).
-By contributing, you agree to the terms below.
+Williamson v93 does exactly what it claims to do.
 
-Contribution Terms
-
-By submitting a contribution (code, documentation, tests, or benchmarks), you agree that:
-
-Your contribution is licensed under AGPL-3.0.
-
-You have the right to submit the work (it is your own or properly attributed).
-
-You understand that all modifications must remain open under AGPL-3.0.
-
-No Proprietary Extensions
-
-Contributions intended to:
-
-enable proprietary forks,
-
-weaken copyleft enforcement,
-
-or obscure license obligations
-
-will not be accepted.
-
-This project exists to keep improvements public, inspectable, and shared.
-
-Relicensing Notice
-
-At this time, no Contributor License Agreement (CLA) is in place.
-
-This means:
-
-Contributors retain copyright to their contributions.
-
-The project as a whole remains AGPL-3.0.
-
-Relicensing of future versions would require contributor consent.
-
-(If this policy changes, it will be announced clearly.)
-
-Philosophy
-
-This project values:
-
-correctness over convenience
-
-openness over secrecy
-
-shared progress over private advantage
-
-If that aligns with you, welcome.
-
----
-
-## Citation
-
-```bibtex
-@software{williamson_encoder_2025,
-  author = {Williamson, Matthew},
-  title = {Williamson Encoder: Structure-Aware Lossless Tokenization},
-  year = {2025},
-  url = {https://github.com/TheMeadBrewer/williamson-encoder}
-}
-```
-
----
-
-*Verum Super Omnia*
+Nothing more.
+Nothing less.
