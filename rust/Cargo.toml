@@ -1,0 +1,31 @@
+[package]
+name = "williamson-encoder"
+version = "0.93.0"
+edition = "2021"
+description = "Structure-aware, lossless tokenization that beats BPE"
+authors = ["Matthew Williamson", "Claude", "GPT", "Grok"]
+license = "MIT"
+repository = "https://github.com/TheMeadBrewer/williamson-encoder"
+keywords = ["tokenization", "nlp", "compression", "bpe"]
+categories = ["text-processing", "compression"]
+
+[lib]
+name = "williamson_encoder"
+path = "src/lib.rs"
+
+[[bin]]
+name = "williamson"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1"
+clap = { version = "4", features = ["derive"] }
+hashbrown = { version = "0.14", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+bincode = "1"
+thiserror = "1"
+
+[profile.release]
+opt-level = 3
+lto = true
