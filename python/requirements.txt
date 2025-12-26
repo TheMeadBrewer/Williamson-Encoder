@@ -1,0 +1,6 @@
+# Williamson Encoder - Python Requirements
+
+# For benchmarking against tiktoken
+tiktoken>=0.5.0
+
+# No other dependencies - williamson.py is self-contained
