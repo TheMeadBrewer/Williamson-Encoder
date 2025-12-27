@@ -123,18 +123,21 @@ def build_atom_vocab(text: str, min_freq: int = 1) -> Dict[str, int]:
     
     Returns:
         Dict mapping atom strings to integer IDs.
-        ID 0 is reserved for <UNK>.
     
     Usage:
         atom_vocab = build_atom_vocab(corpus_text)
         # Save for later use
         json.dump(atom_vocab, open("atom_vocab.json", "w"))
+    
+    Note: Build vocab from your full training corpus to ensure
+    all atoms are covered. encode_to_atom_ids will raise an error
+    if it encounters an atom not in the vocabulary.
     """
     _, sig, _ = tokenize_stream(text)
     counts = Counter(sig)
     
-    vocab = {"<UNK>": 0}
-    idx = 1
+    vocab = {}
+    idx = 0
     for atom, count in counts.most_common():
         if count >= min_freq:
             vocab[atom] = idx
@@ -147,6 +150,9 @@ def encode_to_atom_ids(text: str, atom_vocab: Dict[str, int]) -> List[int]:
     """
     Encode text to atom ID sequence for LLM embedding lookup.
     
+    LOSSLESS: Raises KeyError if any atom is not in vocabulary.
+    Build vocabulary from full corpus to avoid this.
+    
     Args:
         text: Input text
         atom_vocab: Dict mapping atom strings to integer IDs
@@ -154,13 +160,15 @@ def encode_to_atom_ids(text: str, atom_vocab: Dict[str, int]) -> List[int]:
     Returns:
         List of integer atom IDs
     
+    Raises:
+        KeyError: If an atom is not in the vocabulary
+    
     Usage:
         atom_ids = encode_to_atom_ids("Hello world!", atom_vocab)
         embeddings = embedding_table[atom_ids]  # Look up in your LLM
     """
     _, sig, _ = tokenize_stream(text)
-    unk_id = atom_vocab.get("<UNK>", 0)
-    return [atom_vocab.get(atom, unk_id) for atom in sig]
+    return [atom_vocab[atom] for atom in sig]
 
 
 def decode_atom_ids(atom_ids: List[int], id_to_atom: Dict[int, str]) -> List[str]:
@@ -174,7 +182,20 @@ def decode_atom_ids(atom_ids: List[int], id_to_atom: Dict[int, str]) -> List[str
     Returns:
         List of atom strings
     """
-    return [id_to_atom.get(aid, "<UNK>") for aid in atom_ids]
+    return [id_to_atom[aid] for aid in atom_ids]
+
+
+def invert_vocab(atom_vocab: Dict[str, int]) -> Dict[int, str]:
+    """
+    Invert atom vocabulary for decoding.
+    
+    Args:
+        atom_vocab: Dict mapping atom strings to integer IDs
+    
+    Returns:
+        Dict mapping integer IDs to atom strings
+    """
+    return {v: k for k, v in atom_vocab.items()}
 
 
 # ============================================================
@@ -372,6 +393,11 @@ if __name__ == "__main__":
     atom_ids = encode_to_atom_ids(test, atom_vocab)
     print(f"\nInput: {test!r}")
     print(f"Atom IDs: {atom_ids}")
+    
+    # Round-trip verification
+    id_to_atom = invert_vocab(atom_vocab)
+    atoms_back = decode_atom_ids(atom_ids, id_to_atom)
+    print(f"Atoms:   {atoms_back}")
     
     print("\n" + "=" * 60)
     print("CLASSIFICATION RULES:")
