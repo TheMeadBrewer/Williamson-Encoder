@@ -20,11 +20,19 @@ Usage:
     tokens = encoder.encode("Hello world!")
     text = encoder.decode(tokens)
     assert text == "Hello world!"
+
+For LLM embedding integration:
+    # Build atom vocabulary from corpus
+    atom_vocab = build_atom_vocab(corpus_text)
+    
+    # Encode text to atom IDs for embedding lookup
+    atom_ids = encode_to_atom_ids("Hello world!", atom_vocab)
 """
 
 import re
 import ast
 from typing import List, Tuple, Dict, Optional, Set
+from collections import Counter
 
 # ============================================================
 # ATOMIZER CONTRACT - THE LAW
@@ -103,6 +111,70 @@ def tokenize_stream(text: str) -> Tuple[List[str], List[str], List[bool]]:
         sig.append(sym)
         is_slot.append(slot)
     return toks, sig, is_slot
+
+
+# ============================================================
+# ATOM VOCABULARY FOR LLM EMBEDDING
+# ============================================================
+
+def build_atom_vocab(text: str, min_freq: int = 1) -> Dict[str, int]:
+    """
+    Build atom vocabulary from corpus text.
+    
+    Returns:
+        Dict mapping atom strings to integer IDs.
+        ID 0 is reserved for <UNK>.
+    
+    Usage:
+        atom_vocab = build_atom_vocab(corpus_text)
+        # Save for later use
+        json.dump(atom_vocab, open("atom_vocab.json", "w"))
+    """
+    _, sig, _ = tokenize_stream(text)
+    counts = Counter(sig)
+    
+    vocab = {"<UNK>": 0}
+    idx = 1
+    for atom, count in counts.most_common():
+        if count >= min_freq:
+            vocab[atom] = idx
+            idx += 1
+    
+    return vocab
+
+
+def encode_to_atom_ids(text: str, atom_vocab: Dict[str, int]) -> List[int]:
+    """
+    Encode text to atom ID sequence for LLM embedding lookup.
+    
+    Args:
+        text: Input text
+        atom_vocab: Dict mapping atom strings to integer IDs
+    
+    Returns:
+        List of integer atom IDs
+    
+    Usage:
+        atom_ids = encode_to_atom_ids("Hello world!", atom_vocab)
+        embeddings = embedding_table[atom_ids]  # Look up in your LLM
+    """
+    _, sig, _ = tokenize_stream(text)
+    unk_id = atom_vocab.get("<UNK>", 0)
+    return [atom_vocab.get(atom, unk_id) for atom in sig]
+
+
+def decode_atom_ids(atom_ids: List[int], id_to_atom: Dict[int, str]) -> List[str]:
+    """
+    Decode atom IDs back to atom strings.
+    
+    Args:
+        atom_ids: List of integer atom IDs
+        id_to_atom: Dict mapping integer IDs to atom strings
+    
+    Returns:
+        List of atom strings
+    """
+    return [id_to_atom.get(aid, "<UNK>") for aid in atom_ids]
 
 
 # ============================================================
@@ -285,6 +357,21 @@ if __name__ == "__main__":
         print(f"Tokens: {toks}")
         print(f"Atoms:  {sig}")
         print(f"Slots:  {[i for i, x in enumerate(is_slot) if x]}")
+    
+    print("\n" + "=" * 60)
+    print("ATOM ID DEMO (for LLM embedding)")
+    print("=" * 60)
+    
+    # Build vocab from test strings
+    corpus = " ".join(test_strings)
+    atom_vocab = build_atom_vocab(corpus)
+    print(f"Vocab size: {len(atom_vocab)} atoms")
+    
+    # Encode to IDs
+    test = "The quick fox."
+    atom_ids = encode_to_atom_ids(test, atom_vocab)
+    print(f"\nInput: {test!r}")
+    print(f"Atom IDs: {atom_ids}")
     
     print("\n" + "=" * 60)
     print("CLASSIFICATION RULES:")
