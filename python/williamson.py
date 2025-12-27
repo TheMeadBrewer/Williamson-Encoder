@@ -117,27 +117,33 @@ def tokenize_stream(text: str) -> Tuple[List[str], List[str], List[bool]]:
 # ATOM VOCABULARY FOR LLM EMBEDDING
 # ============================================================
 
+# Byte fallback marker - IDs 0-255 reserved for raw bytes
+BYTE_FALLBACK_OFFSET = 256
+
+
 def build_atom_vocab(text: str, min_freq: int = 1) -> Dict[str, int]:
     """
     Build atom vocabulary from corpus text.
     
     Returns:
         Dict mapping atom strings to integer IDs.
+        IDs 0-255 are reserved for byte-level fallback.
+        Atom IDs start at 256.
     
     Usage:
         atom_vocab = build_atom_vocab(corpus_text)
         # Save for later use
         json.dump(atom_vocab, open("atom_vocab.json", "w"))
     
-    Note: Build vocab from your full training corpus to ensure
-    all atoms are covered. encode_to_atom_ids will raise an error
-    if it encounters an atom not in the vocabulary.
+    Note: Unknown atoms at encode time fall back to byte encoding,
+    ensuring lossless representation of any input.
     """
     _, sig, _ = tokenize_stream(text)
     counts = Counter(sig)
     
     vocab = {}
-    idx = 0
+    idx = BYTE_FALLBACK_OFFSET  # Start after byte range
+    
     for atom, count in counts.most_common():
         if count >= min_freq:
             vocab[atom] = idx
@@ -150,39 +156,72 @@ def encode_to_atom_ids(text: str, atom_vocab: Dict[str, int]) -> List[int]:
     """
     Encode text to atom ID sequence for LLM embedding lookup.
     
-    LOSSLESS: Raises KeyError if any atom is not in vocabulary.
-    Build vocabulary from full corpus to avoid this.
+    LOSSLESS: Unknown atoms fall back to UTF-8 byte encoding.
+    Byte IDs are 0-255. Atom IDs are 256+.
     
     Args:
         text: Input text
         atom_vocab: Dict mapping atom strings to integer IDs
     
     Returns:
-        List of integer atom IDs
-    
-    Raises:
-        KeyError: If an atom is not in the vocabulary
+        List of integer IDs (atoms or bytes)
     
     Usage:
         atom_ids = encode_to_atom_ids("Hello world!", atom_vocab)
         embeddings = embedding_table[atom_ids]  # Look up in your LLM
     """
-    _, sig, _ = tokenize_stream(text)
-    return [atom_vocab[atom] for atom in sig]
+    toks, sig, _ = tokenize_stream(text)
+    result = []
+    
+    for tok, atom in zip(toks, sig):
+        if atom in atom_vocab:
+            result.append(atom_vocab[atom])
+        else:
+            # Byte fallback - encode original token as UTF-8 bytes
+            for byte in tok.encode('utf-8'):
+                result.append(byte)  # 0-255
+    
+    return result
 
 
-def decode_atom_ids(atom_ids: List[int], id_to_atom: Dict[int, str]) -> List[str]:
+def decode_atom_ids(atom_ids: List[int], id_to_atom: Dict[int, str]) -> Tuple[List[str], bytes]:
     """
-    Decode atom IDs back to atom strings.
+    Decode atom IDs back to atom strings and raw bytes.
     
     Args:
         atom_ids: List of integer atom IDs
         id_to_atom: Dict mapping integer IDs to atom strings
     
     Returns:
-        List of atom strings
+        Tuple of (atom_strings, leftover_bytes)
+        - atom_strings: List of decoded atoms (byte sequences shown as <BYTES:hex>)
+        - leftover_bytes: Any accumulated bytes not yet decoded
+    
+    Note: For full text reconstruction, use the main encoder's decode().
     """
-    return [id_to_atom[aid] for aid in atom_ids]
+    result = []
+    byte_buffer = bytearray()
+    
+    for aid in atom_ids:
+        if aid < BYTE_FALLBACK_OFFSET:
+            # It's a raw byte
+            byte_buffer.append(aid)
+        else:
+            # Flush any accumulated bytes first
+            if byte_buffer:
+                result.append(f"<BYTES:{byte_buffer.hex()}>")
+                byte_buffer = bytearray()
+            # Decode the atom
+            if aid in id_to_atom:
+                result.append(id_to_atom[aid])
+            else:
+                result.append(f"<UNK:{aid}>")
+    
+    # Flush remaining bytes
+    if byte_buffer:
+        result.append(f"<BYTES:{byte_buffer.hex()}>")
+    
+    return result, bytes(byte_buffer)
 
 
 def invert_vocab(atom_vocab: Dict[str, int]) -> Dict[int, str]:
@@ -196,6 +235,21 @@ def invert_vocab(atom_vocab: Dict[str, int]) -> Dict[int, str]:
         Dict mapping integer IDs to atom strings
     """
     return {v: k for k, v in atom_vocab.items()}
+
+
+def get_vocab_size(atom_vocab: Dict[str, int]) -> int:
+    """
+    Get total vocabulary size including byte fallback range.
+    
+    Args:
+        atom_vocab: Dict mapping atom strings to integer IDs
+    
+    Returns:
+        Total vocab size (256 bytes + number of atoms)
+    """
+    if not atom_vocab:
+        return BYTE_FALLBACK_OFFSET
+    return max(atom_vocab.values()) + 1
 
 
 # ============================================================
@@ -366,6 +420,7 @@ if __name__ == "__main__":
         "In the beginning of the end.",
         "123 Main Street",
         "Hello, world!",
+        "Ünïcödé tëst: 日本語",  # Test byte fallback
     ]
     
     print("=" * 60)
@@ -383,21 +438,22 @@ if __name__ == "__main__":
     print("ATOM ID DEMO (for LLM embedding)")
     print("=" * 60)
     
-    # Build vocab from test strings
-    corpus = " ".join(test_strings)
+    # Build vocab from test strings (excluding unicode test)
+    corpus = " ".join(test_strings[:5])
     atom_vocab = build_atom_vocab(corpus)
-    print(f"Vocab size: {len(atom_vocab)} atoms")
+    print(f"Vocab size: {get_vocab_size(atom_vocab)} (256 bytes + {len(atom_vocab)} atoms)")
     
-    # Encode to IDs
-    test = "The quick fox."
+    # Encode to IDs - including something that will need byte fallback
+    test = "The quick fox. 日本語"
     atom_ids = encode_to_atom_ids(test, atom_vocab)
     print(f"\nInput: {test!r}")
     print(f"Atom IDs: {atom_ids}")
+    print(f"(IDs < 256 are byte fallback, IDs >= 256 are atoms)")
     
     # Round-trip verification
     id_to_atom = invert_vocab(atom_vocab)
-    atoms_back = decode_atom_ids(atom_ids, id_to_atom)
-    print(f"Atoms:   {atoms_back}")
+    atoms_back, _ = decode_atom_ids(atom_ids, id_to_atom)
+    print(f"Decoded: {atoms_back}")
     
     print("\n" + "=" * 60)
     print("CLASSIFICATION RULES:")
@@ -408,6 +464,7 @@ if __name__ == "__main__":
     print("NUM       - Number                  - IS slot")
     print("CAP       - Capitalized word        - IS slot")
     print("VAR       - Other lowercase word    - IS slot")
+    print("\nByte fallback: IDs 0-255 for unknown atoms (UTF-8 bytes)")
     
     print("\n" + "=" * 60)
     print("STOPWORDS (50):")
