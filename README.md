@@ -24,45 +24,47 @@ With only **84,702 templates** vs tiktoken's 100,000+ vocabulary.
 
 The canonical interface produces a model-facing integer token stream plus a slot table for lossless decode.
 
-**Build the lexicon first:**
-
-```bash
-cd rust
-cargo build --release
-./target/release/williamson load-py-v92 --input ../merged_lexicon_v93.json --output lexicon.bin
-```
-
 **Commands:**
 
 ```bash
 # Encode text to token IDs
-williamson encode-ids --lex lexicon.bin --input input.txt --out encoded.bin
+williamson encode-ids --lex lexicon/merged_lexicon_v93.bin --input input.txt --out encoded.bin
 
 # Decode token IDs back to text
-williamson decode-ids --lex lexicon.bin --input encoded.bin --out decoded.txt
+williamson decode-ids --lex lexicon/merged_lexicon_v93.bin --input encoded.bin --out decoded.txt
 
 # One-command lossless verification
-williamson roundtrip --lex lexicon.bin --input input.txt
+williamson roundtrip --lex lexicon/merged_lexicon_v93.bin --input input.txt
 ```
 
 **Expected output:**
 
 ```
 $ echo "restrictions" > test.txt
-$ williamson encode-ids --lex lexicon.bin --input test.txt --out test.bin --dump 10
+
+$ williamson encode-ids --lex lexicon/merged_lexicon_v93.bin --input test.txt --out test.bin --dump 10
 Encoded: 12 chars -> 1 tokens, 1 slots
 Saved to test.bin
 
 First 1 token IDs:
 [84876]
 
-$ williamson roundtrip --lex lexicon.bin --input test.txt
+$ williamson roundtrip --lex lexicon/merged_lexicon_v93.bin --input test.txt
 OK
 ```
 
 **Note on slots:** If you need a single integer-only stream for embeddings, you must define how slot values are represented for your model. The canonical v93 output is a structural token stream + slot payloads. This is by design—see [ARCHITECTURE.md](ARCHITECTURE.md).
 
 **File format:** See [docs/FORMAT.md](docs/FORMAT.md) for the complete binary specification.
+
+---
+
+## Canonical Artifacts
+
+| File | Path | Description |
+|------|------|-------------|
+| Runtime lexicon | `lexicon/merged_lexicon_v93.bin` | Binary lexicon used by encoder/decoder |
+| Source lexicon | `merged_lexicon_v93.json` | Human-readable JSON source |
 
 ---
 
@@ -97,7 +99,7 @@ From the beginning, v93 was developed under a small set of non-negotiable rules:
 - Lossless or fail
 - Benchmarks decide
 - Deterministic builds
-- JSON artifacts only
+- JSON source artifacts; binary runtime artifacts
 - No hidden state
 - No silent phases
 
@@ -121,14 +123,12 @@ This scale is intentional: large enough to capture structure, bounded enough to 
 
 All published results can be reproduced using the material in this repository.
 
-**Artifacts**
-
-- Source lexicon: `merged_lexicon_v93.json` (build to `.bin` via `load-py-v92`)
-- Benchmarks: `benchmarks/`
-
 **Commands**
 
 ```bash
+# Build the Rust CLI
+cd rust && cargo build --release
+
 # Python benchmarks
 python bench_v93_vs_tiktoken.py
 
@@ -169,7 +169,7 @@ Freezing the release preserves reproducibility, benchmark integrity, and histori
 This repository contains everything required to understand and reproduce v93:
 
 - Encoder and decoder implementations (Python and Rust)
-- Lexicon artifacts
+- Lexicon artifacts (source JSON + runtime binary)
 - Benchmark harnesses
 - Build and validation scripts
 - Historical notes in `docs/HISTORY.md`
