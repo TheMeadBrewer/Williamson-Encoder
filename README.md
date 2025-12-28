@@ -22,7 +22,7 @@ With only **84,702 templates** vs tiktoken's 100,000+ vocabulary.
 
 ## Model-Facing Token IDs (Canonical Interface)
 
-The canonical interface produces pure integer token streams suitable for downstream model consumption.
+The canonical interface produces a model-facing integer token stream plus a slot table for lossless decode.
 
 **Build the lexicon first:**
 
