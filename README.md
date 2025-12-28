@@ -20,6 +20,37 @@ With only **84,702 templates** vs tiktoken's 100,000+ vocabulary.
 
 ---
 
+## Model-Facing Token IDs (Canonical Interface)
+
+The canonical interface produces pure integer token streams suitable for downstream model consumption.
+
+**Commands:**
+
+```bash
+# Encode text to token IDs
+williamson encode-ids --lex merged_lexicon_v93.bin --in input.txt --out encoded.bin
+
+# Decode token IDs back to text
+williamson decode-ids --lex merged_lexicon_v93.bin --in encoded.bin --out decoded.txt
+
+# One-command lossless verification
+williamson roundtrip --lex merged_lexicon_v93.bin --in input.txt
+```
+
+**File Format (encoded.bin):**
+```
+[4 bytes]   u32 LE: magic (0x57494C4C = "WILL")
+[4 bytes]   u32 LE: version (1)
+[8 bytes]   u64 LE: token count (n)
+[n*4 bytes] u32 LE: token IDs
+[8 bytes]   u64 LE: slot count (m)
+[variable]  m length-prefixed UTF-8 strings (slot values)
+```
+
+**Important:** Token IDs are structural template indices, not word indices. The slot values section contains the actual words/numbers that fill VAR/CAP/NUM positions. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full explanation.
+
+---
+
 ## Overview
 
 Most modern tokenizers rely on byte-pair encoding (BPE) or closely related variants. These approaches optimize for frequency, gradually merging adjacent symbols and hoping structure emerges over time.
