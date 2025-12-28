@@ -24,30 +24,45 @@ With only **84,702 templates** vs tiktoken's 100,000+ vocabulary.
 
 The canonical interface produces pure integer token streams suitable for downstream model consumption.
 
+**Build the lexicon first:**
+
+```bash
+cd rust
+cargo build --release
+./target/release/williamson load-py-v92 --input ../merged_lexicon_v93.json --output lexicon.bin
+```
+
 **Commands:**
 
 ```bash
 # Encode text to token IDs
-williamson encode-ids --lex merged_lexicon_v93.bin --in input.txt --out encoded.bin
+williamson encode-ids --lex lexicon.bin --input input.txt --out encoded.bin
 
 # Decode token IDs back to text
-williamson decode-ids --lex merged_lexicon_v93.bin --in encoded.bin --out decoded.txt
+williamson decode-ids --lex lexicon.bin --input encoded.bin --out decoded.txt
 
 # One-command lossless verification
-williamson roundtrip --lex merged_lexicon_v93.bin --in input.txt
+williamson roundtrip --lex lexicon.bin --input input.txt
 ```
 
-**File Format (encoded.bin):**
+**Expected output:**
+
 ```
-[4 bytes]   u32 LE: magic (0x57494C4C = "WILL")
-[4 bytes]   u32 LE: version (1)
-[8 bytes]   u64 LE: token count (n)
-[n*4 bytes] u32 LE: token IDs
-[8 bytes]   u64 LE: slot count (m)
-[variable]  m length-prefixed UTF-8 strings (slot values)
+$ echo "restrictions" > test.txt
+$ williamson encode-ids --lex lexicon.bin --input test.txt --out test.bin --dump 10
+Encoded: 12 chars -> 1 tokens, 1 slots
+Saved to test.bin
+
+First 1 token IDs:
+[84876]
+
+$ williamson roundtrip --lex lexicon.bin --input test.txt
+OK
 ```
 
-**Important:** Token IDs are structural template indices, not word indices. The slot values section contains the actual words/numbers that fill VAR/CAP/NUM positions. See [ARCHITECTURE.md](ARCHITECTURE.md) for the full explanation.
+**Note on slots:** If you need a single integer-only stream for embeddings, you must define how slot values are represented for your model. The canonical v93 output is a structural token stream + slot payloads. This is by design—see [ARCHITECTURE.md](ARCHITECTURE.md).
+
+**File format:** See [docs/FORMAT.md](docs/FORMAT.md) for the complete binary specification.
 
 ---
 
@@ -107,10 +122,12 @@ This scale is intentional: large enough to capture structure, bounded enough to 
 All published results can be reproduced using the material in this repository.
 
 **Artifacts**
-- Lexicon: `merged_lexicon_v93.bin is included in this repository and is the canonical lexicon for v93.`
+
+- Source lexicon: `merged_lexicon_v93.json` (build to `.bin` via `load-py-v92`)
 - Benchmarks: `benchmarks/`
 
 **Commands**
+
 ```bash
 # Python benchmarks
 python bench_v93_vs_tiktoken.py
