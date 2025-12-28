@@ -107,7 +107,7 @@ This scale is intentional: large enough to capture structure, bounded enough to 
 All published results can be reproduced using the material in this repository.
 
 **Artifacts**
-- Lexicon: `lexicon/v93.json`
+- Lexicon: `merged_lexicon_v93.bin is included in this repository and is the canonical lexicon for v93.`
 - Benchmarks: `benchmarks/`
 
 **Commands**
